@@ -18,6 +18,14 @@ export const useAuth = () => {
     // Get initial session with error handling for invalid refresh tokens
     const initializeAuth = async () => {
       try {
+        // Check if there's a hash fragment in the URL (auth callback)
+        const hash = window.location.hash;
+        if (hash && hash.includes('access_token')) {
+          console.log('Detected auth callback in URL hash, processing...');
+          // Let Supabase handle the hash fragment
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
@@ -52,6 +60,7 @@ export const useAuth = () => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
+      console.log('Auth state changed:', _event, session?.user?.email);
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
@@ -122,6 +131,24 @@ export const useAuth = () => {
     return { error };
   };
 
+  const refreshSession = async () => {
+    if (!supabase) {
+      return { data: null, error: { message: 'Database not available' } as AuthError };
+    }
+
+    try {
+      const { data, error } = await supabase.auth.getSession();
+      if (!error && data.session) {
+        setSession(data.session);
+        setUser(data.session.user);
+      }
+      return { data, error };
+    } catch (error) {
+      console.error('Failed to refresh session:', error);
+      return { data: null, error: error as AuthError };
+    }
+  };
+
   return {
     user,
     session,
@@ -129,5 +156,6 @@ export const useAuth = () => {
     signUp,
     signIn,
     signOut,
+    refreshSession,
   };
 };

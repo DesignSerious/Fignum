@@ -41,7 +41,7 @@ interface PaymentData {
 
 function App() {
   // Auth state - BACK TO SUPABASE (working solution)
-  const { user, loading: authLoading, signIn, signUp, signOut } = useAuth();
+  const { user, loading: authLoading, signIn, signUp, signOut, refreshSession } = useAuth();
   const { profile, trialInfo, loading: profileLoading, createProfile, updateSubscriptionStatus } = useUserProfile(user);
   const { projects, createProject, updateProject, getPDFFromStorage } = useProjects(user?.id);
   
@@ -173,6 +173,16 @@ function App() {
       }
     }
   }, [user, authLoading, profileLoading]);
+
+  // Handle URL hash fragments (auth callbacks)
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash && hash.includes('access_token') && !user) {
+      console.log('Processing auth callback from URL hash...');
+      // Refresh session to handle the auth callback
+      refreshSession();
+    }
+  }, [user, refreshSession]);
 
   // Auth handlers
   const handleAuthSubmit = async (email: string, password: string) => {
