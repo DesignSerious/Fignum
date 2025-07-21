@@ -56,84 +56,34 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
 
   const fetchUsers = async () => {
-    if (!supabase) {
-      setError('Supabase not configured. Please check your environment variables.');
-      setLoading(false);
-      return;
-    }
-
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true);
-      setError(null);
-      
-      // Try to fetch user profiles directly
-      const { data: profiles, error: profilesError } = await supabase
-        .from('user_profiles')
-        .select('*');
-
-      if (profilesError) {
-        throw profilesError;
-      }
-
-      if (!profiles || profiles.length === 0) {
-        setUsers([]);
-        setLoading(false);
-        return;
-      }
-
-      // Fetch project counts for each user
-      const { data: projectCounts, error: projectError } = await supabase
-        .from('projects')
-        .select('user_id');
-
-      if (projectError) {
-        console.warn('Error fetching projects (non-fatal):', projectError);
-      }
-
-      // Count projects per user
-      const projectCountMap = (projectCounts || []).reduce((acc, project) => {
-        acc[project.user_id] = (acc[project.user_id] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
-
-      // Try to get auth users for email addresses
-      let authUsers: any[] = [];
-      try {
-        const { data: authData, error: authError } = await supabase.auth.admin.listUsers();
-        if (!authError && authData) {
-          authUsers = authData.users;
-        }
-      } catch (authErr) {
-        console.warn('Auth users fetch failed:', authErr);
-      }
-
-      // Combine the data
-      const combinedUsers: AdminUser[] = profiles.map((profile, index) => {
-        const authUser = authUsers.find(u => u.id === profile.id);
-        const projectCount = projectCountMap[profile.id] || 0;
-        
-        // Calculate days remaining
-        const trialEndDate = new Date(profile.trial_end_date);
-        const now = new Date();
-        const daysRemaining = Math.max(0, Math.ceil((trialEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
-        
-        // Check if user has access
-        const hasAccess = profile.subscription_status === 'active' || 
-                         (profile.subscription_status === 'trial' && daysRemaining > 0);
-
-        return {
-          ...profile,
-          email: authUser?.email || `user${index + 1}@example.com`, // Fallback to mock email
-          project_count: projectCount,
-          days_remaining: daysRemaining,
-          has_access: hasAccess,
-          is_locked: false // Default value
-        };
-      });
-
-      setUsers(combinedUsers);
+      // Use environment variable or fallback for API URL
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '';
+      const response = await fetch(`${apiBaseUrl}/api/admin-users`);
+      if (!response.ok) throw new Error('Failed to fetch users from API');
+      const apiUsers = await response.json();
+      // Map API users to AdminUser type (fill missing fields with defaults)
+      const mappedUsers = apiUsers.map((user: any) => ({
+        id: user.id,
+        email: user.email,
+        first_name: user.user_metadata?.first_name || '',
+        last_name: user.user_metadata?.last_name || '',
+        phone_number: user.user_metadata?.phone_number || '',
+        trial_start_date: '',
+        trial_end_date: '',
+        subscription_status: 'trial',
+        subscription_end_date: '',
+        created_at: user.created_at,
+        updated_at: user.updated_at,
+        project_count: 0,
+        days_remaining: 0,
+        has_access: true,
+        is_locked: false
+      }));
+      setUsers(mappedUsers);
     } catch (error) {
-      console.error('Error fetching users:', error);
       setError(error instanceof Error ? error.message : 'Failed to fetch users');
     } finally {
       setLoading(false);

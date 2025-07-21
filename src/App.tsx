@@ -222,24 +222,31 @@ function App() {
         } else {
           setAuthError(error.message);
         }
-      } else if (data.user) {
-        // Wait a moment for the auth state to fully settle
-        // This timeout might still be useful for Supabase's internal session handling
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
+      } else if (data && data.user) {
+        // Wait for the session/user to be available
+        let tries = 0;
+        let currentUser = user;
+        while (!currentUser && tries < 10) {
+          await new Promise(resolve => setTimeout(resolve, 300));
+          currentUser = user;
+          tries++;
+        }
+        if (!currentUser) {
+          setAuthError('Account created but failed to authenticate. Please try signing in.');
+          setAuthSubmitting(false);
+          return;
+        }
         try {
           console.log('Creating user profile...');
-          // Use the createProfile function from useUserProfile hook
-          // This function will now call the secure RPC function
           await createProfile({
             first_name: signUpData.firstName,
             last_name: signUpData.lastName,
             phone_number: signUpData.phoneNumber
           });
-          
           console.log('Profile created successfully');
           setAppMode('dashboard');
           showSuccessNotification(`Welcome to Fignum! Your 7-day free trial has started.`);
+          showSuccessNotification('Please check your email to verify your account before signing in.');
         } catch (profileError) {
           console.error('Failed to create profile:', profileError);
           setAuthError('Account created but failed to set up profile. Please contact support.');
