@@ -20,7 +20,7 @@ import {
   Unlock,
   UserX
 } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { supabaseAdmin } from '../lib/supabase';
 
 interface AdminUser {
   id: string;
@@ -59,31 +59,36 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
     setLoading(true);
     setError(null);
     try {
-      // Use environment variable or fallback for API URL
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '';
-      const response = await fetch(`${apiBaseUrl}/api/admin-users`);
-      if (!response.ok) throw new Error('Failed to fetch users from API');
-      const apiUsers = await response.json();
-      // Map API users to AdminUser type (fill missing fields with defaults)
-      const mappedUsers = apiUsers.map((user: any) => ({
+      // Use Supabase Auth admin API to fetch all users
+      const { data: { users: authUsers }, error } = await supabaseAdmin.auth.admin.listUsers();
+      
+      if (error) {
+        console.error('Supabase auth error:', error);
+        throw new Error('Failed to fetch users from Supabase Auth');
+      }
+
+      // Map Supabase auth users to AdminUser type
+      const mappedUsers: AdminUser[] = authUsers.map((user: any) => ({
         id: user.id,
-        email: user.email,
+        email: user.email || '',
         first_name: user.user_metadata?.first_name || '',
         last_name: user.user_metadata?.last_name || '',
         phone_number: user.user_metadata?.phone_number || '',
-        trial_start_date: '',
-        trial_end_date: '',
-        subscription_status: 'trial',
-        subscription_end_date: '',
+        trial_start_date: user.user_metadata?.trial_start_date || '',
+        trial_end_date: user.user_metadata?.trial_end_date || '',
+        subscription_status: user.user_metadata?.subscription_status || 'trial',
+        subscription_end_date: user.user_metadata?.subscription_end_date || '',
         created_at: user.created_at,
         updated_at: user.updated_at,
-        project_count: 0,
-        days_remaining: 0,
-        has_access: true,
-        is_locked: false
+        project_count: user.user_metadata?.project_count || 0,
+        days_remaining: user.user_metadata?.days_remaining || 0,
+        has_access: user.user_metadata?.has_access !== false, // Default to true
+        is_locked: user.user_metadata?.is_locked || false
       }));
+
       setUsers(mappedUsers);
     } catch (error) {
+      console.error('Error fetching users:', error);
       setError(error instanceof Error ? error.message : 'Failed to fetch users');
     } finally {
       setLoading(false);
@@ -118,18 +123,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
   };
 
   const handleSave = async () => {
-    if (!editingUser || !supabase) return;
+    if (!editingUser || !supabaseAdmin) return;
 
     try {
       setSaving(true);
       
-      const { error } = await supabase
-        .from('user_profiles')
-        .update({
-          ...editForm,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', editingUser);
+      // Update user metadata in Supabase Auth
+      const { error } = await supabaseAdmin.auth.admin.updateUserById(editingUser, {
+        user_metadata: {
+          first_name: editForm.first_name,
+          last_name: editForm.last_name,
+          phone_number: editForm.phone_number,
+          subscription_status: editForm.subscription_status,
+          subscription_end_date: editForm.subscription_end_date
+        }
+      });
 
       if (error) throw error;
 
@@ -145,11 +153,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
   };
 
   const handleDelete = async (userId: string) => {
-    if (!supabase) return;
+    if (!supabaseAdmin) return;
 
     try {
       // First, delete the user's projects
-      const { error: projectsError } = await supabase
+      const { error: projectsError } = await supabaseAdmin
         .from('projects')
         .delete()
         .eq('user_id', userId);
@@ -158,16 +166,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
         console.warn('Error deleting user projects:', projectsError);
       }
 
-      // Then delete the user profile
-      const { error: profileError } = await supabase
-        .from('user_profiles')
-        .delete()
-        .eq('id', userId);
-
-      if (profileError) throw profileError;
-
-      // Finally, delete the auth user
-      const { error: authError } = await supabase.auth.admin.deleteUser(userId);
+      // Delete the auth user
+      const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(userId);
       if (authError) throw authError;
 
       await fetchUsers(); // Refresh data

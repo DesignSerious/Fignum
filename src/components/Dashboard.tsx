@@ -12,7 +12,6 @@ import {
   FolderOpen,
   Target,
   Hash,
-  MousePointer,
   CreditCard
 } from 'lucide-react';
 import { useProjects } from '../hooks/useProjects';
@@ -119,7 +118,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
     setShowUpgradeModal(true);
   };
 
-  const handleUpgrade = async (paymentData: any) => {
+  const handleUpgrade = async () => {
     try {
       // Simulate payment processing delay
       await new Promise(resolve => setTimeout(resolve, 2000));

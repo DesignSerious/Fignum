@@ -1,9 +1,14 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://motgsqofedfudslmcwbp.supabase.co';
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl = 'https://motgsqofedfudslmcwbp.supabase.co';
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vdGdzcW9mZWRmdWRzbG1jd2JwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI5NjkwMTksImV4cCI6MjA2ODU0NTAxOX0.XOanxCYboeNOaVxcQD4dZ2WYZiYXUyBk5rRyxmHteSM';
+const supabaseServiceKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vdGdzcW9mZWRmdWRzbG1jd2JwIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1Mjk2OTAxOSwiZXhwIjoyMDY4NTQ1MDE5fQ.EroPBb2ukIUHqmJeYx3u9HHs6rfqXL2XAGBqVOjBR9c';
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
+// Regular client for normal operations
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+// Admin client with service role key for admin operations
+export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
 export type Database = {
   public: {
