@@ -68,16 +68,23 @@ export const useUserProfile = (user: User | null) => {
     }
 
     try {
-      // Use the secure RPC function to create the profile
+      // Create profile directly using insert
       const { data, error } = await supabase
-        .rpc('create_user_profile_secure', {
-          p_first_name: profileData.first_name,
-          p_last_name: profileData.last_name,
-          p_phone_number: profileData.phone_number
-        });
+        .from('user_profiles')
+        .insert({
+          id: user.id,
+          first_name: profileData.first_name,
+          last_name: profileData.last_name,
+          phone_number: profileData.phone_number,
+          trial_start_date: new Date().toISOString(),
+          trial_end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+          subscription_status: 'trial'
+        })
+        .select()
+        .single();
 
       if (error) {
-        console.error('RPC function error:', error);
+        console.error('Profile creation error:', error);
         throw error;
       }
 

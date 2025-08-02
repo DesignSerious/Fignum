@@ -230,22 +230,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       
       // Method 1: Try to fetch user profiles directly using REST API
       console.log('📊 Fetching user profiles via REST API...');
-      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/user_profiles?select=*`;
+      const { data: profiles, error: profilesError } = await supabase
+        .from('user_profiles')
+        .select('*');
       
-      const response = await fetch(apiUrl, {
-        method: 'GET',
-        headers: {
-          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error(`API response error: ${response.status} ${response.statusText}`);
+      if (profilesError) {
+        console.error('❌ Error fetching profiles:', profilesError);
+        setDebugInfo(`Profile fetch error: ${profilesError.message}`);
+        setError(`Failed to fetch user profiles: ${profilesError.message}`);
+        setLoading(false);
+        return;
       }
-      
-      const profiles = await response.json();
       
       console.log('📋 Fetched profiles via REST API:', profiles);
       setDebugInfo(`Fetched ${profiles?.length || 0} profiles successfully via REST API.`);
