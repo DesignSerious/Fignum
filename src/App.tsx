@@ -268,26 +268,6 @@ function App() {
       setAuthSubmitting(false);
     }
   };
-            first_name: signUpData.firstName,
-            last_name: signUpData.lastName,
-            phone_number: signUpData.phoneNumber
-          });
-          console.log('Profile created successfully');
-          setAppMode('dashboard');
-          showSuccessNotification(`Welcome to Fignum! Your 7-day free trial has started.`);
-          showSuccessNotification('Please check your email to verify your account before signing in.');
-        } catch (profileError) {
-          console.error('Failed to create profile:', profileError);
-          setAuthError('Account created but failed to set up profile. Please contact support.');
-        }
-      }
-    } catch (err) {
-      console.error('Signup error:', err);
-      setAuthError('An unexpected error occurred');
-    } finally {
-      setAuthSubmitting(false);
-    }
-  };
 
   const handleToggleAuthMode = () => {
     setAuthMode(authMode === 'signin' ? 'signup' : 'signin');
