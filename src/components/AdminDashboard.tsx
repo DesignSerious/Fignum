@@ -361,32 +361,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   };
 
   const handleSave = async () => {
-    if (!editingUser) return;
+    if (!editingUser || !supabase) return;
 
     try {
       setSaving(true);
       
-      // Use direct REST API call with proper headers
-      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/user_profiles?id=eq.${editingUser}`;
-      
-      const response = await fetch(apiUrl, {
-        method: 'PATCH',
-        headers: {
-          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
-          'Prefer': 'return=minimal'
-        },
-        body: JSON.stringify({
+      const { error } = await supabase
+        .from('user_profiles')
+        .update({
           ...editForm,
           updated_at: new Date().toISOString()
         })
-      });
-      
-      if (!response.ok) {
-        throw new Error(`API response error: ${response.status} ${response.statusText}`);
-      }
+        .eq('id', editingUser);
 
+      if (error) throw error;
       await fetchUsers(); // Refresh data
       setEditingUser(null);
       setEditForm({});
