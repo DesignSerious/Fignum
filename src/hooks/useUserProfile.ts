@@ -68,31 +68,17 @@ export const useUserProfile = (user: User | null) => {
     }
 
     try {
-      // Create profile using direct insert with proper error handling
+      // Use the secure RPC function to create the profile
       const { data, error } = await supabase
-        .from('user_profiles')
-        .insert({
-          id: user.id,
-          first_name: profileData.first_name,
-          last_name: profileData.last_name,
-          phone_number: profileData.phone_number,
-          trial_start_date: new Date().toISOString(),
-          trial_end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-          subscription_status: 'trial',
-          role: 'user'
-        })
-        .select()
-        .single();
+        .rpc('create_user_profile_secure', {
+          p_first_name: profileData.first_name,
+          p_last_name: profileData.last_name,
+          p_phone_number: profileData.phone_number
+        });
 
       if (error) {
         console.error('Profile creation error:', error);
-        // If it's a duplicate key error, the profile already exists
-        if (error.code === '23505') {
-          console.log('Profile already exists, fetching existing profile');
-          await fetchProfile();
-          return;
-        }
-        throw new Error(`Failed to create profile: ${error.message}`);
+        throw error;
       }
 
       console.log('Profile created successfully:', data);

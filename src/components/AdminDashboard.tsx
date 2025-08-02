@@ -228,25 +228,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         return;
       }
       
-      // Method 1: Try to fetch user profiles directly using REST API
-      console.log('📊 Fetching user profiles via REST API...');
-      const { data: profiles, error: profilesError } = await supabase
-        .from('user_profiles')
-        .select('*');
+      // Use the admin function to get all users
+      console.log('📊 Fetching users via admin function...');
+      const { data: users, error: usersError } = await supabase
+        .rpc('admin_get_all_users');
       
-      if (profilesError) {
-        console.error('❌ Error fetching profiles:', profilesError);
-        setDebugInfo(`Profile fetch error: ${profilesError.message}`);
-        setError(`Failed to fetch user profiles: ${profilesError.message}`);
+      if (usersError) {
+        console.error('❌ Error fetching users:', usersError);
+        console.log('⚠️ No users found, checking auth users...');
+        setError(`Failed to fetch users: ${usersError.message}`);
         setLoading(false);
         return;
-      }
-      
-      console.log('📋 Fetched profiles via REST API:', profiles);
-      setDebugInfo(`Fetched ${profiles?.length || 0} profiles successfully via REST API.`);
+            setDebugInfo(`Found ${authData.users.length} auth users but no user profiles. Users may need to complete signup.`);
+            setError(`Found ${authData.users.length} registered users but no user profiles. This suggests users are not completing the signup process properly.`);
+      console.log('📋 Fetched users:', users);
+            setDebugInfo('No users found in database. No users have signed up yet.');
 
-      if (!profiles || profiles.length === 0) {
-        console.log('⚠️ No profiles found in database');
+      if (!users || users.length === 0) {
+          setDebugInfo('No users found in database. Users may not have completed signup.');
         setDebugInfo('No user profiles found in database. Users may not have completed signup.');
         setUsers([]);
         setLoading(false);
@@ -262,66 +261,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         headers: {
           'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
           'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      let projectCounts: any[] = [];
-      if (projectsResponse.ok) {
-        projectCounts = await projectsResponse.json();
-      } else {
-        console.error('⚠️ Error fetching projects (non-fatal):', projectsResponse.statusText);
-      }
-
-      // Count projects per user
-      const projectCountMap = (projectCounts || []).reduce((acc, project) => {
-        acc[project.user_id] = (acc[project.user_id] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
-
-      // Try to get auth users for email addresses
-      let authUsers: any[] = [];
-      try {
-        const { data: authData, error: authError } = await supabase.auth.admin.listUsers();
-        if (!authError && authData) {
-          authUsers = authData.users;
-          console.log('✅ Successfully fetched auth users:', authUsers.length);
-          setDebugInfo(prev => prev + ` | Fetched ${authUsers.length} auth users.`);
-        } else {
-          console.log('⚠️ Could not fetch auth users:', authError?.message);
-          setDebugInfo(prev => prev + ` | Auth users warning: ${authError?.message || 'Unknown error'}`);
-        }
-      } catch (authErr) {
-        console.log('⚠️ Auth users fetch failed:', authErr);
-        setDebugInfo(prev => prev + ` | Auth users error: ${authErr}`);
-      }
-
-      // Combine the data
-      const combinedUsers: AdminUser[] = (profiles || []).map((profile, index) => {
-        const authUser = authUsers.find(u => u.id === profile.id);
-        const projectCount = projectCountMap[profile.id] || 0;
-        
-        // Calculate days remaining
-        const trialEndDate = new Date(profile.trial_end_date);
-        const now = new Date();
-        const daysRemaining = Math.max(0, Math.ceil((trialEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
-        
-        // Check if user has access
-        const hasAccess = profile.subscription_status === 'active' || 
-                         (profile.subscription_status === 'trial' && daysRemaining > 0);
-
-        return {
-          ...profile,
-          email: authUser?.email || `user${index + 1}@example.com`, // Fallback to mock email
-          project_count: projectCount,
-          days_remaining: daysRemaining,
-          has_access: hasAccess
-        };
-      });
-
-      console.log('👥 Combined users result:', combinedUsers);
-      setDebugInfo(`Successfully processed ${combinedUsers.length} users.`);
-      setUsers(combinedUsers);
+      // The admin function already returns all the data we need
+      console.log('👥 Users result:', users);
+      setDebugInfo(`Successfully processed ${users.length} users.`);
+      setUsers(users);
     } catch (error) {
       console.error('💥 Error in fetchUsers:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
