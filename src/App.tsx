@@ -223,42 +223,30 @@ function App() {
           setAuthError(error.message);
         }
       } else if (data && data.user) {
-        // Wait for auth state to update
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Wait for auth state to update and session to be established
+        await new Promise(resolve => setTimeout(resolve, 2000));
         
         try {
           console.log('Creating user profile...');
           
-          // Create profile directly using Supabase insert instead of RPC function
+          // Create profile using the createProfile function from useUserProfile hook
           if (!supabase) {
             throw new Error('Database not available');
           }
           
-          const { error: profileError } = await supabase
-            .from('user_profiles')
-            .insert({
-              id: data.user.id,
-              first_name: signUpData.firstName,
-              last_name: signUpData.lastName,
-              phone_number: signUpData.phoneNumber,
-              trial_start_date: new Date().toISOString(),
-              trial_end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-              subscription_status: 'trial'
-            });
-          
-          if (profileError) {
-            console.error('Profile creation error:', profileError);
-            throw new Error(`Failed to create profile: ${profileError.message}`);
-          }
+          // Use the createProfile function which handles authentication properly
+          await createProfile({
+            first_name: signUpData.firstName,
+            last_name: signUpData.lastName,
+            phone_number: signUpData.phoneNumber
+          });
           
           console.log('Profile created successfully');
           setAppMode('dashboard');
           showSuccessNotification(`Welcome to Fignum! Your 7-day free trial has started.`);
         } catch (profileError) {
           console.error('Failed to create profile:', profileError);
-          // Don't show error to user, just log them in without profile for now
-          setAppMode('dashboard');
-          showSuccessNotification(`Welcome to Fignum! Please complete your profile setup.`);
+          setAuthError('Account created but failed to set up profile. Please contact support.');
         }
       }
     } catch (err) {

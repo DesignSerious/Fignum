@@ -68,7 +68,7 @@ export const useUserProfile = (user: User | null) => {
     }
 
     try {
-      // Create profile directly using insert
+      // Create profile using direct insert with proper error handling
       const { data, error } = await supabase
         .from('user_profiles')
         .insert({
@@ -78,14 +78,21 @@ export const useUserProfile = (user: User | null) => {
           phone_number: profileData.phone_number,
           trial_start_date: new Date().toISOString(),
           trial_end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-          subscription_status: 'trial'
+          subscription_status: 'trial',
+          role: 'user'
         })
         .select()
         .single();
 
       if (error) {
         console.error('Profile creation error:', error);
-        throw error;
+        // If it's a duplicate key error, the profile already exists
+        if (error.code === '23505') {
+          console.log('Profile already exists, fetching existing profile');
+          await fetchProfile();
+          return;
+        }
+        throw new Error(`Failed to create profile: ${error.message}`);
       }
 
       console.log('Profile created successfully:', data);
