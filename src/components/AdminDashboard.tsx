@@ -239,13 +239,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         setError(`Failed to fetch users: ${usersError.message}`);
         setLoading(false);
         return;
-            setDebugInfo(`Found ${authData.users.length} auth users but no user profiles. Users may need to complete signup.`);
-            setError(`Found ${authData.users.length} registered users but no user profiles. This suggests users are not completing the signup process properly.`);
+      }
+
       console.log('📋 Fetched users:', users);
-            setDebugInfo('No users found in database. No users have signed up yet.');
 
       if (!users || users.length === 0) {
-          setDebugInfo('No users found in database. Users may not have completed signup.');
         setDebugInfo('No user profiles found in database. Users may not have completed signup.');
         setUsers([]);
         setLoading(false);
@@ -261,6 +259,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         headers: {
           'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
           'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
       // The admin function already returns all the data we need
       console.log('👥 Users result:', users);
       setDebugInfo(`Successfully processed ${users.length} users.`);
